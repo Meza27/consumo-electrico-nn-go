@@ -1,0 +1,6 @@
+data/
+results/
+docs/
+.git/
+*.exe
+*.md
