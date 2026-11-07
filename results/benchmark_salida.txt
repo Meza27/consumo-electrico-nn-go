@@ -1,0 +1,18 @@
+Datos: 2369272 filas (train 1895418 / test 473854) cargadas en 1.03 s
+Red: [134 64 32 1] (10753 parámetros) | entrada: 10 tarifas + 111 distritos + 12 meses + antigüedad
+CPU: 20 núcleos lógicos | windows/amd64 | go1.27.1
+
+BENCHMARK: 3 épocas, lote 4096, 1895418 filas de train
+
+  modo         workers  tiempo(s)  s/época  speedup  eficiencia  pérdida   máx|Δpesos| vs seq
+  secuencial         1      17.07     5.69     1.00x        100%   0.7565   0.0e+00
+  concurrente        1      17.09     5.70     1.00x        100%   0.7565   0.0e+00
+  concurrente        2       8.60     2.87     1.98x         99%   0.7565   5.4e-15
+  concurrente        4       4.93     1.64     3.46x         87%   0.7565   4.0e-15
+  concurrente        6       3.54     1.18     4.82x         80%   0.7565   3.5e-15
+  concurrente        8       2.97     0.99     5.75x         72%   0.7565   2.9e-15
+  concurrente       12       2.73     0.91     6.25x         52%   0.7565   3.7e-15
+  concurrente       16       2.55     0.85     6.68x         42%   0.7565   2.4e-15
+  concurrente       20       2.55     0.85     6.68x         33%   0.7565   4.4e-15
+
+Guardado: results\benchmark.csv

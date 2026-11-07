@@ -1,0 +1,18 @@
+{
+  "archivos": [
+    "data\\raw\\puno\\Datos Abiertos Mayo 2023.csv",
+    "data\\raw\\puno\\Datos Abiertos Septiembre.csv",
+    "data\\raw\\puno\\Datos abiertos Agosto.csv",
+    "data\\raw\\puno\\DatosAbiertos_ Enero2023.csv",
+    "data\\raw\\puno\\DatosAbiertos_ Marzo2023.csv",
+    "data\\raw\\puno\\DatosAbiertos_Abril2023.csv",
+    "data\\raw\\puno\\DatosAbiertos_Febrero2023.csv"
+  ],
+  "filas_leidas": 2369272,
+  "filas_validas": 2369272,
+  "filas_descartadas": 0,
+  "facturacion_negativa_conservadas": 18159,
+  "motivos_descarte": {},
+  "workers": 8,
+  "segundos": 1.0228618
+}

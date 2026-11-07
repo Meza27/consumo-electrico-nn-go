@@ -1,0 +1,106 @@
+{
+  "batch": 4096,
+  "corridas": [
+    {
+      "modo": "secuencial",
+      "workers": 1,
+      "segundos": 17.0668106,
+      "segundos_por_epoca": 5.688936866666666,
+      "speedup": 1,
+      "eficiencia": 1,
+      "perdida_final": 0.7564604809353365,
+      "max_dif_pesos_vs_seq": 0
+    },
+    {
+      "modo": "concurrente",
+      "workers": 1,
+      "segundos": 17.0947207,
+      "segundos_por_epoca": 5.698240233333333,
+      "speedup": 0.9983673263523984,
+      "eficiencia": 0.9983673263523984,
+      "perdida_final": 0.7564604809352965,
+      "max_dif_pesos_vs_seq": 0
+    },
+    {
+      "modo": "concurrente",
+      "workers": 2,
+      "segundos": 8.5987749,
+      "segundos_por_epoca": 2.8662583,
+      "speedup": 1.9847956015222585,
+      "eficiencia": 0.9923978007611293,
+      "perdida_final": 0.7564604809352965,
+      "max_dif_pesos_vs_seq": 5.384581669432009e-15
+    },
+    {
+      "modo": "concurrente",
+      "workers": 4,
+      "segundos": 4.9321611,
+      "segundos_por_epoca": 1.6440537,
+      "speedup": 3.4603108564316765,
+      "eficiencia": 0.8650777141079191,
+      "perdida_final": 0.7564604809352965,
+      "max_dif_pesos_vs_seq": 3.9968028886505635e-15
+    },
+    {
+      "modo": "concurrente",
+      "workers": 6,
+      "segundos": 3.5420303,
+      "segundos_por_epoca": 1.1806767666666667,
+      "speedup": 4.818369453248325,
+      "eficiencia": 0.8030615755413875,
+      "perdida_final": 0.7564604809352965,
+      "max_dif_pesos_vs_seq": 3.524958103184872e-15
+    },
+    {
+      "modo": "concurrente",
+      "workers": 8,
+      "segundos": 2.968019,
+      "segundos_por_epoca": 0.9893396666666666,
+      "speedup": 5.750236302395638,
+      "eficiencia": 0.7187795377994548,
+      "perdida_final": 0.7564604809352965,
+      "max_dif_pesos_vs_seq": 2.942091015256665e-15
+    },
+    {
+      "modo": "concurrente",
+      "workers": 12,
+      "segundos": 2.7317743,
+      "segundos_por_epoca": 0.9105914333333334,
+      "speedup": 6.247518544998392,
+      "eficiencia": 0.5206265454165326,
+      "perdida_final": 0.7564604809352966,
+      "max_dif_pesos_vs_seq": 3.6637359812630166e-15
+    },
+    {
+      "modo": "concurrente",
+      "workers": 16,
+      "segundos": 2.5539506,
+      "segundos_por_epoca": 0.8513168666666666,
+      "speedup": 6.682513984413012,
+      "eficiencia": 0.41765712402581323,
+      "perdida_final": 0.7564604809352964,
+      "max_dif_pesos_vs_seq": 2.4424906541753444e-15
+    },
+    {
+      "modo": "concurrente",
+      "workers": 20,
+      "segundos": 2.5533191,
+      "segundos_por_epoca": 0.8511063666666666,
+      "speedup": 6.6841667381096235,
+      "eficiencia": 0.3342083369054812,
+      "perdida_final": 0.7564604809352964,
+      "max_dif_pesos_vs_seq": 4.385380947269368e-15
+    }
+  ],
+  "cpu_logicos": 20,
+  "epocas": 3,
+  "filas_train": 1895418,
+  "go": "go1.27.1",
+  "os": "windows",
+  "sizes": [
+    134,
+    64,
+    32,
+    1
+  ]
+}

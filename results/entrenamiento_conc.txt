@@ -1,0 +1,25 @@
+Datos: 2369272 filas (train 1895418 / test 473854) cargadas en 1.03 s
+Red: [134 64 32 1] (10753 parámetros) | entrada: 10 tarifas + 111 distritos + 12 meses + antigüedad
+CPU: 20 núcleos lógicos | windows/amd64 | go1.27.1
+Entrenamiento CONCURRENTE con 8 workers
+  época  1 | pérdida 0.7970 | 1.00 s
+  época  2 | pérdida 0.7592 | 1.04 s
+  época  3 | pérdida 0.7565 | 1.15 s
+  época  4 | pérdida 0.7540 | 1.12 s
+  época  5 | pérdida 0.7526 | 0.99 s
+  época  6 | pérdida 0.7512 | 0.99 s
+  época  7 | pérdida 0.7504 | 1.04 s
+  época  8 | pérdida 0.7492 | 1.11 s
+  época  9 | pérdida 0.7487 | 1.07 s
+  época 10 | pérdida 0.7480 | 1.00 s
+Tiempo de entrenamiento: 10.51 s
+
+                      RMSE (kWh)  MAE (kWh)  R² (kWh) | RMSE log  MAE log  R² log
+  train                 1058.14      48.56    0.0214 |   1.4779   1.1825  0.2514
+  test                  1303.08      51.17    0.0185 |   1.4817   1.1866  0.2489
+  baseline (test)       1316.21      56.78   -0.0014 |   1.7096   1.4344 -0.0000
+
+Guardado: results\model.json, results\metrics_conc.json
+  predicción tarifa=BT5B ubigeo=211101 mes=7 antigüedad=10 años -> 6.7 kWh
+  predicción tarifa=BT5B ubigeo=210101 mes=1 antigüedad=25 años -> 35.3 kWh
+  predicción tarifa=BT5D ubigeo=211101 mes=7 antigüedad=10 años -> 357.5 kWh

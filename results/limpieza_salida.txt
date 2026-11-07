@@ -1,0 +1,6 @@
+Archivos:     7
+Filas leídas: 2369272
+Filas válidas: 2369272
+Descartadas:  0
+Facturación negativa (ajustes, conservadas): 18159
+Workers: 8 | Tiempo: 1.02 s
