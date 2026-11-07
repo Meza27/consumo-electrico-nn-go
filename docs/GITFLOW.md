@@ -11,10 +11,9 @@ Ramas:
 | `hotfix/<tema>` | Correcciones urgentes sobre `main`. |
 
 Reglas: commits en inglés con el formato `type: description` (`feat`, `fix`, `test`,
-`docs`, `chore`, `refactor`, `perf`). **Cada integrante commitea con su propia cuenta**, así
-el historial del repositorio muestra quién hizo qué (eso pide el reporte de participación).
+`docs`, `chore`, `refactor`, `perf`).
 
-## 1. Crear el repositorio (lo hace UNA persona, una vez)
+## 1. Crear el repositorio
 
 ```bash
 git init -b main
@@ -29,7 +28,7 @@ git push -u origin develop
 En GitHub: Settings → Branches → proteger `main` y `develop` (exigir Pull Request).
 Crear el tablero Kanban (Projects) con columnas *Todo / In progress / Review / Done*.
 
-## 2. Ramas feature para la PC3 (reparto sugerido)
+## 2. Ramas feature para la PC3
 
 Cada integrante clona el repositorio, configura su identidad y trabaja su rama:
 
@@ -61,6 +60,3 @@ git merge --no-ff develop -m "release: PC3 deliverable"
 git tag -a v0.3-pc3 -m "PC3: data cleaning + sequential/concurrent MLP"
 git push origin main --tags
 ```
-
-`--no-ff` deja el commit de merge visible, así el gráfico (`git log --graph --oneline --all`)
-muestra claramente las ramas: esa captura sirve como evidencia de Git Flow en el informe.
