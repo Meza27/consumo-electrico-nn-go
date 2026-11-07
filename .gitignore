@@ -1,0 +1,4 @@
+# datos pesados: se descargan, no se suben al repositorio
+data/raw/
+data/processed/
+*.exe
