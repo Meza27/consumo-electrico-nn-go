@@ -1,0 +1,99 @@
+# Despliegue de la PC4: bases de datos + clúster de 3 nodos ML + API coordinadora.
+#
+#   docker compose up --build        (la primera vez limpia los CSV si falta el dataset)
+#   http://localhost:8080/swagger/   (documentación y pruebas de la API)
+#
+# Topología: estrella. La API (coordinador) se conecta por TCP a cada nodo ML
+# (puerto 9000 dentro de la red "cluster"). Los nodos no se hablan entre sí.
+
+x-app: &app
+  image: consumo-nn:pc4
+  build: .
+  restart: unless-stopped
+  networks: [cluster]
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes: [mongo-data:/data/db]
+    networks: [cluster]
+    ports: ["27017:27017"]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    networks: [cluster]
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Limpia los CSV crudos (PC3) solo si todavía no existe el dataset limpio.
+  prep:
+    <<: *app
+    restart: "no"
+    command: ["prep"]
+    volumes: ["./data:/app/data"]
+
+  node1:
+    <<: *app
+    command: ["node"]
+    hostname: node1
+    environment: { NODE_ID: node1, NODE_ADDR: ":9000", NODE_WORKERS: "4" }
+    volumes: ["./data:/app/data:ro"]
+    depends_on: { prep: { condition: service_completed_successfully } }
+
+  node2:
+    <<: *app
+    command: ["node"]
+    hostname: node2
+    environment: { NODE_ID: node2, NODE_ADDR: ":9000", NODE_WORKERS: "4" }
+    volumes: ["./data:/app/data:ro"]
+    depends_on: { prep: { condition: service_completed_successfully } }
+
+  node3:
+    <<: *app
+    command: ["node"]
+    hostname: node3
+    environment: { NODE_ID: node3, NODE_ADDR: ":9000", NODE_WORKERS: "4" }
+    volumes: ["./data:/app/data:ro"]
+    depends_on: { prep: { condition: service_completed_successfully } }
+
+  api:
+    <<: *app
+    command: ["api"]
+    ports: ["8080:8080"]
+    environment:
+      API_ADDR: ":8080"
+      NODES: "node1:9000,node2:9000,node3:9000"
+      MONGO_ADDR: "mongo:27017"
+      MONGO_DB: "consumo"
+      REDIS_ADDR: "redis:6379"
+      DATA_PATH: "/app/data/processed/dataset_limpio.csv"
+      MODEL_PATH: "/app/model/model.json"
+      JWT_SECRET: "${JWT_SECRET:-grupo10-cc65-cambiar}"
+    volumes:
+      - "./data:/app/data:ro"
+      - "./results:/app/model:ro"
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      node1: { condition: service_started }
+      node2: { condition: service_started }
+      node3: { condition: service_started }
+
+networks:
+  cluster:
+    name: cluster-ml
+
+volumes:
+  mongo-data:

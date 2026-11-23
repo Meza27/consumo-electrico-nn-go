@@ -129,49 +129,114 @@ type hecho struct {
 // trozos que uno en un núcleo lento (E-core), y nadie se queda esperando.
 const TamTrozo = 128
 
-// TrainConcurrent entrena con DATA PARALLELISM usando goroutines y channels
-// (patrón worker pool + cola de tareas + reducción):
+// GradPool es un pool persistente de P goroutines que calcula el gradiente
+// SUMADO de un conjunto de filas (patrón worker pool + cola de tareas +
+// reducción). Lo usan TrainConcurrent (PC3) y cada nodo ML del clúster (PC4).
 //
-//  1. Se lanzan P workers que viven toda la ejecución. Cada uno tiene su propio
+//  1. Los P workers viven mientras viva el pool. Cada uno tiene su propio
 //     buffer de gradiente y sus propias activaciones (nada compartido escribible).
-//  2. Por cada mini-lote, el coordinador lo parte en trozos de TamTrozo filas y
-//     los pone en una cola (channel compartido). Cada worker libre toma el
-//     siguiente trozo (balanceo dinámico de carga).
-//  3. Cada worker hace forward + backward de sus filas leyendo los pesos
-//     actuales (solo lectura), suma el gradiente en SU buffer y avisa.
-//  4. Cuando llegaron los avisos de todos los trozos (barrera), el coordinador
-//     SUMA los P gradientes parciales (reducción tipo AllReduce), los promedia
-//     y SOLO ÉL actualiza los pesos con Adam. Luego limpia los buffers.
+//  2. Compute parte las filas en trozos de TamTrozo y los pone en una cola
+//     (channel compartido). Cada worker libre toma el siguiente trozo
+//     (balanceo dinámico de carga).
+//  3. Cada worker hace forward + backward leyendo los pesos (solo lectura),
+//     suma el gradiente en SU buffer y avisa por el channel avisos.
+//  4. Cuando llegan los avisos de todos los trozos (barrera), Compute suma los
+//     P buffers (reducción) y limpia los buffers.
+//
+// Quien llama puede modificar m.Params ENTRE dos llamadas a Compute (los
+// workers están bloqueados esperando trabajo), nunca durante una.
+type GradPool struct {
+	m      *MLP
+	d      *Dataset
+	grads  [][]float64
+	total  []float64
+	cola   chan trozo
+	avisos chan hecho
+}
+
+// NewGradPool lanza los workers del pool.
+func NewGradPool(m *MLP, d *Dataset, workers int) *GradPool {
+	if workers < 1 {
+		workers = 1
+	}
+	n := m.NumParams()
+	p := &GradPool{m: m, d: d, grads: make([][]float64, workers), total: make([]float64, n),
+		cola: make(chan trozo, 64), avisos: make(chan hecho, 64)}
+	for w := 0; w < workers; w++ {
+		p.grads[w] = make([]float64, n)
+		go func(w int) {
+			s := m.newScratch()
+			g := p.grads[w]
+			for t := range p.cola {
+				var perdida float64
+				for _, i := range t.filas {
+					perdida += m.accumulateGrad(d.Cat[i*NumCat:(i+1)*NumCat], d.Num[i*NumNum:(i+1)*NumNum], d.Y[i], s, g)
+				}
+				p.avisos <- hecho{worker: w, perdida: perdida}
+			}
+		}(w)
+	}
+	return p
+}
+
+// Workers devuelve el número de goroutines del pool.
+func (p *GradPool) Workers() int { return len(p.grads) }
+
+// Compute devuelve el gradiente SUMADO (sin promediar) y la suma de errores
+// cuadráticos de las filas indicadas. El slice devuelto pertenece al pool y
+// se sobrescribe en la siguiente llamada.
+func (p *GradPool) Compute(filas []int) ([]float64, float64) {
+	// La cola tiene capacidad limitada: un goroutine aparte la llena mientras
+	// esta goroutine recoge los avisos, así nunca se bloquean mutuamente.
+	pendientes := (len(filas) + TamTrozo - 1) / TamTrozo
+	go func() {
+		for a := 0; a < len(filas); a += TamTrozo {
+			p.cola <- trozo{filas: filas[a:min(a+TamTrozo, len(filas))]}
+		}
+	}()
+	var perdida float64
+	for ; pendientes > 0; pendientes-- {
+		perdida += (<-p.avisos).perdida
+	}
+	zero(p.total)
+	for _, g := range p.grads {
+		for k, v := range g {
+			p.total[k] += v
+		}
+		zero(g)
+	}
+	return p.total, perdida
+}
+
+// Close termina los workers.
+func (p *GradPool) Close() { close(p.cola) }
+
+// Adam es el optimizador exportado para el coordinador del clúster.
+type Adam struct{ a *adam }
+
+// NewAdam crea el optimizador para n parámetros.
+func NewAdam(n int, lr float64) *Adam { return &Adam{newAdam(n, lr)} }
+
+// Step aplica un paso con el gradiente PROMEDIO.
+func (o *Adam) Step(params, grad []float64) { o.a.step(params, grad) }
+
+// EpochOrder es el orden barajado de las filas de una época (el mismo que usan
+// TrainSequential y TrainConcurrent, para poder comparar resultados).
+func EpochOrder(n int, seed int64, epoch int) []int { return orden(n, seed, epoch) }
+
+// TrainConcurrent entrena con DATA PARALLELISM dentro de un proceso: por cada
+// mini-lote, el GradPool calcula el gradiente en paralelo y SOLO esta
+// goroutine (el coordinador) promedia y actualiza los pesos con Adam.
 //
 // Mientras los workers leen los pesos, nadie los escribe; mientras el
 // coordinador los escribe, todos los workers están esperando trabajo. Por eso
 // no hay condiciones de carrera en los parámetros del modelo.
 func TrainConcurrent(m *MLP, d *Dataset, cfg TrainConfig) []EpochStats {
 	cfg.defaults()
-	P := cfg.Workers
-	n := m.NumParams()
-	opt := newAdam(n, cfg.LR)
-	grads := make([][]float64, P)
-	cola := make(chan trozo, cfg.Batch/TamTrozo+1)
-	avisos := make(chan hecho, cfg.Batch/TamTrozo+1)
+	opt := newAdam(m.NumParams(), cfg.LR)
+	pool := NewGradPool(m, d, cfg.Workers)
+	defer pool.Close()
 
-	for w := 0; w < P; w++ {
-		grads[w] = make([]float64, n)
-		go func(w int) {
-			s := m.newScratch()
-			g := grads[w]
-			for t := range cola {
-				var perdida float64
-				for _, i := range t.filas {
-					perdida += m.accumulateGrad(d.Cat[i*NumCat:(i+1)*NumCat], d.Num[i*NumNum:(i+1)*NumNum], d.Y[i], s, g)
-				}
-				avisos <- hecho{worker: w, perdida: perdida}
-			}
-		}(w)
-	}
-	defer close(cola) // al terminar, los workers salen de su bucle
-
-	total := make([]float64, n)
 	var hist []EpochStats
 	for ep := 1; ep <= cfg.Epochs; ep++ {
 		inicio := time.Now()
@@ -179,26 +244,9 @@ func TrainConcurrent(m *MLP, d *Dataset, cfg TrainConfig) []EpochStats {
 		var perdida float64
 		for ini := 0; ini < len(perm); ini += cfg.Batch {
 			fin := min(ini+cfg.Batch, len(perm))
-			lote := perm[ini:fin]
-			// Scatter: el lote se reparte en trozos dentro de la cola.
-			pendientes := 0
-			for a := 0; a < len(lote); a += TamTrozo {
-				cola <- trozo{filas: lote[a:min(a+TamTrozo, len(lote))]}
-				pendientes++
-			}
-			// Barrera: esperar el aviso de cada trozo.
-			for ; pendientes > 0; pendientes-- {
-				perdida += (<-avisos).perdida
-			}
-			// Reducción: sumar los gradientes parciales de los P workers.
-			zero(total)
-			for w := 0; w < P; w++ {
-				for k, v := range grads[w] {
-					total[k] += v
-				}
-				zero(grads[w])
-			}
-			escala := 1 / float64(len(lote))
+			total, l := pool.Compute(perm[ini:fin])
+			perdida += l
+			escala := 1 / float64(fin-ini)
 			for k := range total {
 				total[k] *= escala
 			}
