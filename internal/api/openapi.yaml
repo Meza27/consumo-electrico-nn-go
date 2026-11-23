@@ -1,0 +1,244 @@
+openapi: 3.0.3
+info:
+  title: API Coordinadora – Consumo Eléctrico Puno (Grupo 10)
+  version: 0.4.0
+  description: |
+    API REST/WebSocket del Trabajo Final de CC65 (PC4). Sirve predicciones del MLP en tiempo real,
+    coordina el entrenamiento distribuido en los nodos ML por TCP y persiste resultados en
+    MongoDB (persistente) y Redis (caché).
+
+    **Cómo probar:** ejecute `POST /api/auth/login` con `admin` / `admin123` (o `demo` / `demo123`),
+    copie el `token` y péguelo en el botón **Authorize**.
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: Autenticación
+  - name: Predicción
+  - name: Entrenamiento distribuido
+  - name: Clúster y métricas
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string, example: admin }
+        password: { type: string, example: admin123 }
+    LoginResponse:
+      type: object
+      properties:
+        token: { type: string }
+        role: { type: string, example: admin }
+        expires_in: { type: integer, example: 28800 }
+    PredictRequest:
+      type: object
+      required: [tarifa, ubigeo, mes, antiguedad]
+      properties:
+        tarifa: { type: string, example: BT5B, description: Tarifa eléctrica }
+        ubigeo: { type: integer, example: 211101, description: Ubigeo del distrito (6 dígitos) }
+        mes: { type: integer, minimum: 1, maximum: 12, example: 7 }
+        antiguedad: { type: number, example: 10, description: Años desde la fecha de alta del suministro }
+    PredictResponse:
+      type: object
+      properties:
+        kwh: { type: number, example: 6.7, description: Consumo mensual estimado en kWh }
+        cached: { type: boolean, description: true si la respuesta salió de la caché de Redis }
+        latency_ms: { type: number, example: 0.42 }
+        model_id: { type: string }
+        input: { $ref: '#/components/schemas/PredictRequest' }
+        known_categories:
+          type: object
+          properties:
+            tarifa: { type: boolean }
+            ubigeo: { type: boolean }
+    DistritoDemanda:
+      type: object
+      properties:
+        ubigeo: { type: integer }
+        distrito: { type: string }
+        provincia: { type: string }
+        suministros: { type: integer }
+        mwh: { type: number }
+        kwh_promedio: { type: number }
+    TrainRequest:
+      type: object
+      properties:
+        epochs: { type: integer, example: 5 }
+        batch: { type: integer, example: 4096 }
+        lr: { type: number, example: 0.003 }
+        hidden: { type: array, items: { type: integer }, example: [64, 32] }
+        limit: { type: integer, example: 0, description: Filas a leer del CSV (0 = todas) }
+    NodeStatus:
+      type: object
+      properties:
+        addr: { type: string, example: "node1:9000" }
+        id: { type: string }
+        hostname: { type: string }
+        cores: { type: integer }
+        workers: { type: integer }
+        alive: { type: boolean }
+        shard_rows: { type: integer }
+        steps: { type: integer }
+        avg_latency_ms: { type: number }
+        avg_compute_ms: { type: number }
+        ping_ms: { type: number }
+        last_error: { type: string }
+        last_seen: { type: string, format: date-time }
+security:
+  - bearerAuth: []
+paths:
+  /api/health:
+    get:
+      tags: [Clúster y métricas]
+      summary: Estado del sistema (público)
+      security: []
+      responses:
+        '200': { description: Estado de MongoDB, Redis, nodos y modelo activo }
+  /api/auth/login:
+    post:
+      tags: [Autenticación]
+      summary: Inicia sesión y devuelve un JWT (HS256, 8 horas)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '401':
+          description: Credenciales incorrectas
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/predict:
+    post:
+      tags: [Predicción]
+      summary: Consumo mensual estimado (kWh) de un suministro
+      description: Consulta primero la caché de Redis; si no está, calcula con el MLP. La predicción se guarda en MongoDB de forma asíncrona.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PredictRequest' }
+      responses:
+        '200':
+          description: Predicción
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PredictResponse' }
+        '400': { description: Datos inválidos }
+        '401': { description: Falta el token }
+  /api/demand:
+    get:
+      tags: [Predicción]
+      summary: Demanda estimada por distrito para un mes (pregunta de impacto social)
+      parameters:
+        - { name: mes, in: query, schema: { type: integer, minimum: 1, maximum: 12 }, example: 7 }
+        - { name: top, in: query, schema: { type: integer }, example: 10 }
+      responses:
+        '200':
+          description: Distritos ordenados de mayor a menor demanda
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mes: { type: integer }
+                  total_mwh: { type: number }
+                  suministros: { type: integer }
+                  cached: { type: boolean }
+                  latency_ms: { type: number }
+                  distritos: { type: array, items: { $ref: '#/components/schemas/DistritoDemanda' } }
+  /api/model:
+    get:
+      tags: [Predicción]
+      summary: Modelo activo y sus métricas
+      responses:
+        '200': { description: Modelo activo }
+  /api/predictions:
+    get:
+      tags: [Predicción]
+      summary: Últimas predicciones guardadas en MongoDB
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 20 } }
+      responses:
+        '200': { description: Lista de predicciones }
+  /api/predictions/stats:
+    get:
+      tags: [Predicción]
+      summary: Estadísticas de predicciones (agregación en MongoDB)
+      responses:
+        '200': { description: Total, desde caché y latencias }
+  /api/train:
+    post:
+      tags: [Entrenamiento distribuido]
+      summary: Lanza un entrenamiento distribuido en los nodos ML (rol admin)
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TrainRequest' }
+      responses:
+        '202': { description: Entrenamiento iniciado; el progreso se publica por WebSocket }
+        '403': { description: Requiere rol admin }
+        '409': { description: Ya hay un entrenamiento en curso }
+    get:
+      tags: [Entrenamiento distribuido]
+      summary: Últimos entrenamientos
+      responses:
+        '200': { description: Lista de entrenamientos }
+  /api/train/{id}:
+    get:
+      tags: [Entrenamiento distribuido]
+      summary: Estado, progreso en vivo y resultado de un entrenamiento
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Entrenamiento }
+        '404': { description: No existe }
+  /api/cluster/nodes:
+    get:
+      tags: [Clúster y métricas]
+      summary: Estado de los nodos ML (rol admin)
+      parameters:
+        - { name: refresh, in: query, schema: { type: integer, enum: [0, 1] }, description: '1 = consultar ahora a los nodos (sin caché)' }
+      responses:
+        '200':
+          description: Nodos
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/NodeStatus' } }
+  /api/cluster/logs:
+    get:
+      tags: [Clúster y métricas]
+      summary: Últimos eventos del clúster (rol admin)
+      responses:
+        '200': { description: Eventos }
+  /api/metrics:
+    get:
+      tags: [Clúster y métricas]
+      summary: Latencia de la API (p50/p95/p99) y uso del proceso (rol admin)
+      responses:
+        '200': { description: Métricas }
+  /ws:
+    get:
+      tags: [Clúster y métricas]
+      summary: WebSocket con eventos en tiempo real (train_progress, train_done, cluster, prediction, log)
+      description: Conectarse con ws://localhost:8080/ws?token=JWT. Swagger no puede probar WebSocket; usar Postman (New → WebSocket).
+      parameters:
+        - { name: token, in: query, required: true, schema: { type: string } }
+      responses:
+        '101': { description: Cambio de protocolo a WebSocket }

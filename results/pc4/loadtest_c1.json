@@ -1,0 +1,13 @@
+{
+  "concurrency": 1,
+  "errors": 0,
+  "max_ms": 13.511,
+  "ok": 10000,
+  "p50_ms": 0.501,
+  "p95_ms": 1.144,
+  "p99_ms": 1.23,
+  "pct_under_100ms": 100,
+  "req_per_sec": 1547.1383185904976,
+  "requests": 10000,
+  "seconds": 6.4635462
+}

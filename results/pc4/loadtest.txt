@@ -1,0 +1,9 @@
+== concurrencia 1
+Peticiones: 10000 (concurrencia 1) | OK: 10000 | errores: 0 | 6.46 s | 1547 req/s
+Latencia (ms): p50 0.50 | p95 1.14 | p99 1.23 | máx 13.51 | < 100 ms: 100.00 %
+== concurrencia 50
+Peticiones: 10000 (concurrencia 50) | OK: 10000 | errores: 0 | 0.89 s | 11278 req/s
+Latencia (ms): p50 4.00 | p95 5.78 | p99 7.50 | máx 154.12 | < 100 ms: 99.85 %
+== concurrencia 200
+Peticiones: 10000 (concurrencia 200) | OK: 10000 | errores: 0 | 0.72 s | 13968 req/s
+Latencia (ms): p50 11.61 | p95 14.75 | p99 161.57 | máx 262.53 | < 100 ms: 98.43 %
