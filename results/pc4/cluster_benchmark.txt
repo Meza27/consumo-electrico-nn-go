@@ -1,0 +1,12 @@
+ Container consumo-electrico-nn-go-api-run-0822c4534eba Creating 
+ Container consumo-electrico-nn-go-api-run-0822c4534eba Created 
+secuencial: 13.61 s
+1 nodo(s): 4.63 s
+2 nodo(s): 3.13 s
+3 nodo(s): 2.94 s
+
+  modo                    nodos  tiempo(s)  s/época  speedup  paso(ms)  comunic.(ms)  pct.comunic.  pérdida
+  secuencial (1 proceso)      0      13.61     6.80    1.00x      0.00          0.00       0.0%   0.7592
+  distribuido                 1       4.63     2.32    2.94x      4.95          0.60      12.2%   0.7592
+  distribuido                 2       3.13     1.56    4.35x      3.32          0.65      19.5%   0.7592
+  distribuido                 3       2.94     1.47    4.62x      3.12          0.66      21.3%   0.7592

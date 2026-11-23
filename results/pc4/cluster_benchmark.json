@@ -1,0 +1,54 @@
+{
+  "batch": 4096,
+  "corridas": [
+    {
+      "modo": "secuencial (1 proceso)",
+      "nodos": 0,
+      "segundos": 13.608947587,
+      "segundos_por_epoca": 6.8044737935,
+      "speedup": 1,
+      "paso_ms": 0,
+      "comunicacion_ms": 0,
+      "pct_comunicacion": 0,
+      "perdida_final": 0.7592166449989638,
+      "r2_log_test": 0
+    },
+    {
+      "modo": "distribuido",
+      "nodos": 1,
+      "segundos": 4.630430977,
+      "segundos_por_epoca": 2.3152154885,
+      "speedup": 2.9390239601016734,
+      "paso_ms": 4.948897408207343,
+      "comunicacion_ms": 0.6026371490280776,
+      "pct_comunicacion": 12.177200279574457,
+      "perdida_final": 0.7592166449989562,
+      "r2_log_test": 0.2420449828181206
+    },
+    {
+      "modo": "distribuido",
+      "nodos": 2,
+      "segundos": 3.1289537689999998,
+      "segundos_por_epoca": 1.5644768844999999,
+      "speedup": 4.3493603906296645,
+      "paso_ms": 3.31965442764579,
+      "comunicacion_ms": 0.6486727861771052,
+      "pct_comunicacion": 19.540370852309664,
+      "perdida_final": 0.7592166449989567,
+      "r2_log_test": 0.2420449828181206
+    },
+    {
+      "modo": "distribuido",
+      "nodos": 3,
+      "segundos": 2.943217048,
+      "segundos_por_epoca": 1.471608524,
+      "speedup": 4.623834180441319,
+      "paso_ms": 3.1164341252699783,
+      "comunicacion_ms": 0.6640766738660917,
+      "pct_comunicacion": 21.308862859681415,
+      "perdida_final": 0.7592166449989571,
+      "r2_log_test": 0.24204498281812048
+    }
+  ],
+  "epochs": 2
+}
